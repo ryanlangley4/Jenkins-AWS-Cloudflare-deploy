@@ -1,5 +1,5 @@
-$email = "<CLoud FLare email>"
-$api_key = "<Cloud Flare API key>"
+$email = "<Provided by CloudFlare Account>"
+$api_key = "<Provided by CloudFlare Account>"
 
 #Configure work environment and populate environment variables:
 cd $env:WORKSPACE

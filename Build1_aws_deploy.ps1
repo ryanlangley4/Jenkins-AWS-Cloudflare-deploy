@@ -2,9 +2,10 @@ import-module awspowershell
 cd $env:WORKSPACE
 
 
-Set-AWSCredentials -ProfileName $aws_profile
 
 $aws_profile = $ENV:AWS_Profile
+Set-AWSCredentials -ProfileName $aws_profile
+
 $region = $ENV:Region
 $instance_name = $ENV:Instance_Name
 $builder = $ENV:BUILD_USER
@@ -15,7 +16,7 @@ $domain = $ENV:Domain
 
 $SecurityGroup = $ENV:Security_Group
 try {
-$SecurityGroup_Id = Get-EC2SecurityGroup -Region "us-west-2" | where { $_.tags.value -like "$SecurityGroup" } | select -expandproperty GroupId
+$SecurityGroup_Id = Get-EC2SecurityGroup -Region "$region" | where { $_.tags.value -like "$SecurityGroup" } | select -expandproperty GroupId
 echo "Security group Identification response:"
 $SecurityGroup_Id
 
