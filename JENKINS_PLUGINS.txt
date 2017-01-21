@@ -1,0 +1,3 @@
+Environment Injector Plugin
+User build vars plugin
+PowerShell Plugin
