@@ -1,10 +1,20 @@
+#Import AWS powershell module
 import-module awspowershell
+
+#Enforce working in our current Jenkins workspace.
+
 cd $env:WORKSPACE
 
+#
 
+#ENV:AWS_Profile is from the build parameters earlier it provides the AWS profile credentials
 
 $aws_profile = $ENV:AWS_Profile
 Set-AWSCredentials -ProfileName $aws_profile
+
+
+
+#Load all the other environment variables AWS needs to to create an instance
 
 $region = $ENV:Region
 $instance_name = $ENV:Instance_Name
@@ -15,6 +25,9 @@ $Instance_Type = $ENV:Instance_Type
 $domain = $ENV:Domain
 
 $SecurityGroup = $ENV:Security_Group
+
+#Search for the Security group Name tag Value. More on this in the next post.
+
 try {
 $SecurityGroup_Id = Get-EC2SecurityGroup -Region "$region" | where { $_.tags.value -like "$SecurityGroup" } | select -expandproperty GroupId
 echo "Security group Identification response:"
@@ -25,14 +38,16 @@ $_
 exit 1
 }
 
+#Make sure that the Instance name is not blank.
+
 if($instance_name.length -le 1) {
-	echo "ERROR: Instance must be named and the length must be greater than 1."
-	echo "ERROR: Instance name: $instance_name"
-	echo "ERROR: Instance name length" $instance_name.length
-	exit 1
+echo "ERROR: Instance must be named and the length must be greater than 1."
+echo "ERROR: Instance name: $instance_name"
+echo "ERROR: Instance name length" $instance_name.length
+exit 1
 }
 
-
+#Select AWS AMI. This is limited to the ones owned by Amazon.
 
 try {
 $image_id = Get-EC2Image -Owner amazon, self -Region $region | where { $_.Description | select-string $image_type } | select -expandproperty ImageId
@@ -43,6 +58,8 @@ $_
 exit 1
 }
 
+#Generate the instance, with all environmental variables provided from Jenkins build.
+
 try {
 $instance_info = New-EC2Instance -ImageId $image_id -MinCount 1 -MaxCount 1 -KeyName "master.pem" -SecurityGroupId $SecurityGroup_Id -InstanceType $instance_type -Region $region
 echo "Image generation response"
@@ -52,10 +69,14 @@ $_
 exit 1
 }
 
+#Let the user know things are working as intended and to please wait while we wait for the instance to reach the running state.
+
 echo "Please wait for image to fully generate"
 while($(Get-Ec2instance -instanceid $instance_info.instances.instanceid -region $region).Instances.State.Name.value -ne "running") {
 sleep 1
 }
+
+#Apply tags to the instance
 
 echo "Naming Instance"
 $tag = New-Object Amazon.EC2.Model.Tag
@@ -71,9 +92,9 @@ New-EC2Tag -Resource $instance_info.instances.instanceid -Tag $tag -Region $regi
 $tag.Key = "BuildTag"
 $tag.Value = "$BUILDTAG"
 
-
-
 New-EC2Tag -Resource $instance_info.instances.instanceid -Tag $tag -Region $region
+
+#Attach an elastic IP to the instance
 
 try {
 $ellastic_ip_allocation = New-EC2Address -Region $region
@@ -86,6 +107,7 @@ exit 1
 #return $false
 }
 
+#Assign the elastic IP to the instance
 
 try {
 $response = Register-Ec2Address -instanceid $instance_info.instances.instanceid -AllocationID $ellastic_ip_allocation.allocationid -Region $region
@@ -96,6 +118,8 @@ echo "ERROR: Associating EC2Address:"
 $_
 exit 1
 }
+
+#Send the elastic IP value to the EnvInj plugin:
 
 $PublicIP = $ellastic_ip_allocation | select -expandproperty PublicIP
 echo "Passing Env variable $PublicIP"
