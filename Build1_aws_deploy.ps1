@@ -2,12 +2,11 @@
 import-module awspowershell
 
 #Enforce working in our current Jenkins workspace.
-
 cd $env:WORKSPACE
 
 #
-
 #ENV:AWS_Profile is from the build parameters earlier it provides the AWS profile credentials
+#
 
 $aws_profile = $ENV:AWS_Profile
 Set-AWSCredentials -ProfileName $aws_profile
@@ -23,13 +22,13 @@ $buildtag = $ENV:BUILD_TAG
 $image_type = $ENV:image_type
 $Instance_Type = $ENV:Instance_Type
 $domain = $ENV:Domain
-
+$public_key = $ENV:Public_Key
 $SecurityGroup = $ENV:Security_Group
 
 #Search for the Security group Name tag Value. More on this in the next post.
 
 try {
-$SecurityGroup_Id = Get-EC2SecurityGroup -Region "$region" | where { $_.tags.value -like "$SecurityGroup" } | select -expandproperty GroupId
+$SecurityGroup_Id = Get-EC2SecurityGroup -Region "$region" | where { $_.Groupname -eq "$SecurityGroup" } | select -expandproperty GroupId
 echo "Security group Identification response:"
 $SecurityGroup_Id
 
@@ -47,10 +46,10 @@ echo "ERROR: Instance name length" $instance_name.length
 exit 1
 }
 
-#Select AWS AMI. This is limited to the ones owned by Amazon.
+#Select AWS AMI. This is limited to the ones owned by Amazon. And gets the most up to date image.
 
 try {
-$image_id = Get-EC2Image -Owner amazon, self -Region $region | where { $_.Description | select-string $image_type } | select -expandproperty ImageId
+$image_id = Get-EC2Image -Owner amazon, self -Region $region | where { $_.Description -eq $image_type } | select -first 1 -expandproperty ImageId
 echo "EC2 Image ID Response:"
 $image_id
 } catch {
@@ -61,7 +60,7 @@ exit 1
 #Generate the instance, with all environmental variables provided from Jenkins build.
 
 try {
-$instance_info = New-EC2Instance -ImageId $image_id -MinCount 1 -MaxCount 1 -KeyName "master.pem" -SecurityGroupId $SecurityGroup_Id -InstanceType $instance_type -Region $region
+$instance_info = New-EC2Instance -ImageId $image_id -MinCount 1 -MaxCount 1 -KeyName $public_key -SecurityGroupId $SecurityGroup_Id -InstanceType $instance_type -Region $region
 echo "Image generation response"
 $instance_info
 } catch {
