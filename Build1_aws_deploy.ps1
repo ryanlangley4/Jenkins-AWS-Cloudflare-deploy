@@ -22,7 +22,7 @@ $buildtag = $ENV:BUILD_TAG
 $image_type = $ENV:image_type
 $Instance_Type = $ENV:Instance_Type
 $domain = $ENV:Domain
-$public_key = $ENV:Public_Key
+$Key_pair = $ENV:Key_Pair
 $SecurityGroup = $ENV:Security_Group
 
 #Search for the Security group Name tag Value. More on this in the next post.
@@ -60,7 +60,7 @@ exit 1
 #Generate the instance, with all environmental variables provided from Jenkins build.
 
 try {
-$instance_info = New-EC2Instance -ImageId $image_id -MinCount 1 -MaxCount 1 -KeyName $public_key -SecurityGroupId $SecurityGroup_Id -InstanceType $instance_type -Region $region
+$instance_info = New-EC2Instance -ImageId $image_id -MinCount 1 -MaxCount 1 -KeyName $Key_pair -SecurityGroupId $SecurityGroup_Id -InstanceType $instance_type -Region $region
 echo "Image generation response"
 $instance_info
 } catch {
@@ -75,7 +75,7 @@ while($(Get-Ec2instance -instanceid $instance_info.instances.instanceid -region 
 sleep 1
 }
 
-#Apply tags to the instance
+#Once EC2 instance is created tags are added that are visible in the AWS console
 
 echo "Naming Instance"
 $tag = New-Object Amazon.EC2.Model.Tag
