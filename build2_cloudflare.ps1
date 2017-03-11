@@ -1,5 +1,6 @@
 $email = "<Provided by CloudFlare Account>"
 $api_key = "<Provided by CloudFlare Account>"
+$overwriteip = $true
 
 #Configure work environment and populate environment variables:
 cd $env:WORKSPACE
@@ -101,10 +102,15 @@ $uri_base = "https://api.cloudflare.com/client/v4/zones/" + $id
 
 try {
 $id = get-cfzoneid $domain_FQDN
-if(-not(update-CFdns $domain_FQDN $EIP $id)){
-create-CFdns $domain_FQDN A $EIP $id
-}
-echo "Assigned $EIP to $domain_FQDN"
+	if(-not(update-CFdns $domain_FQDN $EIP $id) -AND $overwriteIP){
+	create-CFdns $domain_FQDN A $EIP $id
+	echo "Assigned $EIP to $domain_FQDN"
+	} else {
+		if(-not(create-CFdns $domain_FQDN A $EIP $id)) {
+		echo "$domain_FQDN already has an IP assigned to cloudflare. This script is not allowed to update existing cloudflare domains."
+		echo "Please contact your Cloudflare administrator to clear the domain."
+		}
+	}
 } catch {
 echo "ERROR Assigning $EIP to $domain_FQDN"
 $_
